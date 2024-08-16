@@ -1,25 +1,11 @@
 const express = require('express')
 const mysql = require('mysql')
 
-const client = mysql.createConnection({
-    host: 'sql12.freesqldatabase.com',
-    user: 'sql12726244',
-    password: 'mlaiwZiatg',
-    database: 'sql12726244'
-})
+let mClient = null
 
 let PORT = process.env.PORT || 3000
-let mConnected = false
 let mPanding = {}
 
-
-client.connect(async function(err) {
-    mConnected = true
-
-    for(let [key, value] of Object.entries(mPanding)) {
-        await insartData(key, value)
-    }
-})
 
 let app = express()
 
@@ -42,15 +28,11 @@ app.post('/command', async (req, res) => {
         let cmd = req.body.cmd
 
         if (cmd) {
-            if (mConnected) {
-                let results = await sqlQuery(cmd)
-                if (results != null) {
-                    res.end(JSON.stringify(results))
-                } else {
-                    res.end('Null Data')
-                }
+            let results = await sqlQuery(cmd)
+            if (results != null) {
+                res.end(JSON.stringify(results))
             } else {
-                mPanding[id] = active
+                res.end('null')
             }
         } else {
             res.end('null')
@@ -62,13 +44,10 @@ app.post('/command', async (req, res) => {
 
 app.get('/offline', async (req, res) => {
     try {
-        if (mConnected) {
-            let results = await sqlQuery("SELECT * FROM live WHERE active < "+parseInt(new Date().getTime()/1000))
-            if (results != null) {
-                res.end(JSON.stringify(results))
-            } else {
-                res.end('null')
-            }
+        let results = await sqlQuery("SELECT * FROM live WHERE active < "+parseInt(new Date().getTime()/1000))
+        
+        if (results != null) {
+            res.end(JSON.stringify(results))
         } else {
             res.end('null')
         }
@@ -79,13 +58,9 @@ app.get('/offline', async (req, res) => {
 
 app.post('/offline', async (req, res) => {
     try {
-        if (mConnected) {
-            let results = await sqlQuery("SELECT * FROM live WHERE active < "+parseInt(new Date().getTime()/1000))
-            if (results != null) {
-                res.end(JSON.stringify(results))
-            } else {
-                res.end('null')
-            }
+        let results = await sqlQuery("SELECT * FROM live WHERE active < "+parseInt(new Date().getTime()/1000))
+        if (results != null) {
+            res.end(JSON.stringify(results))
         } else {
             res.end('null')
         }
@@ -100,11 +75,7 @@ app.post('/active', async (req, res) => {
         let active = req.body.active
 
         if (id && active) {
-            if (mConnected) {
-                await insartData(id, active)
-            } else {
-                mPanding[id] = active
-            }
+            await insartData(id, active)
         }
     } catch (error) {}
 
@@ -115,7 +86,7 @@ app.post('/remove', async (req, res) => {
     try {
         let id = req.body.id
 
-        if (id && mConnected) {
+        if (id) {
             await sqlQuery("DELETE FROM live WHERE id='"+id+"'")
         }
     } catch (error) {}
@@ -128,12 +99,45 @@ async function insartData(id, active) {
 }
 
 async function sqlQuery(query) {
+    try {
+        if(mClient == null || mClient.state != 'authenticated') {
+            mClient = await sqlConnection()
+        }
+    } catch (error) {}
+
     return new Promise((resolve) => {
-        client.query(query, function (err, result, fields) {
+        try {
+            if(mClient != null) {
+                mClient.query(query, function (err, result, fields) {
+                    if (err) {
+                        resolve(null)
+                    } else {
+                        resolve(result)
+                    }
+                })
+            } else {
+                resolve(null)
+            }
+        } catch (error) {
+            resolve(null)
+        }
+    })
+}
+
+async function sqlConnection() {
+    return new Promise((resolve) => {
+        let client = mysql.createConnection({
+            host: 'sql12.freesqldatabase.com',
+            user: 'sql12726244',
+            password: 'mlaiwZiatg',
+            database: 'sql12726244'
+        })
+
+        client.connect(async function(err) {
             if (err) {
                 resolve(null)
             } else {
-                resolve(result)
+                resolve(client)
             }
         })
     })
