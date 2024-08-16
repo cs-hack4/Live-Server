@@ -49,7 +49,13 @@ app.get('/offline', async (req, res) => {
         if (results != null) {
             res.end(JSON.stringify(results))
         } else {
-            res.end('null')
+            results = await sqlQuery("SELECT * FROM live WHERE active < "+parseInt(new Date().getTime()/1000))
+        
+            if (results != null) {
+                res.end(JSON.stringify(results))
+            } else {
+                res.end('null')
+            }
         }
     } catch (error) {
         res.end('null')
@@ -62,7 +68,13 @@ app.post('/offline', async (req, res) => {
         if (results != null) {
             res.end(JSON.stringify(results))
         } else {
-            res.end('null')
+            results = await sqlQuery("SELECT * FROM live WHERE active < "+parseInt(new Date().getTime()/1000))
+            
+            if (results != null) {
+                res.end(JSON.stringify(results))
+            } else {
+                res.end('null')
+            }
         }
     } catch (error) {
         res.end('null')
