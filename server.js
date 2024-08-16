@@ -87,15 +87,25 @@ app.post('/remove', async (req, res) => {
         let id = req.body.id
 
         if (id) {
-            await sqlQuery("DELETE FROM live WHERE id='"+id+"'")
+            let result = await sqlQuery("DELETE FROM live WHERE id='"+id+"'")
+            if (result == null) {
+                res.end('error')
+            } else {
+                res.end('ok')
+            }
+        } else {
+            res.end('error')
         }
-    } catch (error) {}
-
-    res.end('ok')
+    } catch (error) {
+        res.end('error')
+    }
 })
 
 async function insartData(id, active) {
-    await sqlQuery("INSERT INTO live (id, active) VALUES('"+id+"', "+active+") ON DUPLICATE KEY UPDATE active="+active)
+    let results = await sqlQuery("INSERT INTO live (id, active) VALUES('"+id+"', "+active+") ON DUPLICATE KEY UPDATE active="+active)
+    if (results == null) {
+        await sqlQuery("INSERT INTO live (id, active) VALUES('"+id+"', "+active+") ON DUPLICATE KEY UPDATE active="+active)
+    }
 }
 
 async function sqlQuery(query) {
